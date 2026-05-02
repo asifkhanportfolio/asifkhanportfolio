@@ -1,3 +1,16 @@
+(function(){
+  var panel = document.querySelector('.cap-panel');
+  if(!panel) return;
+  var obs = new IntersectionObserver(function(entries){
+    if(entries[0].isIntersecting){
+      panel.style.opacity='1';
+      panel.style.transform='translateX(0)';
+      obs.disconnect();
+    }
+  },{threshold:0.1});
+  obs.observe(panel);
+})();
+
 function pauseRow(el){el.classList.add('paused');}
   function resumeRow(el){el.classList.remove('paused');}
   function openLightbox(tile){
@@ -97,7 +110,7 @@ window.addEventListener('scroll',()=>nav.classList.toggle('scrolled',window.scro
 const obs=new IntersectionObserver(entries=>{
   entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('visible');obs.unobserve(e.target)}});
 },{threshold:.08,rootMargin:'0px 0px -40px 0px'});
-document.querySelectorAll('.fade-up,.fade-down,.fade-in,.portrait-reveal,.card-reveal').forEach(el=>obs.observe(el));
+document.querySelectorAll('.fade-up,.fade-down,.fade-in,.portrait-reveal,.card-reveal,.slide-left-reveal').forEach(el=>obs.observe(el));
 const projScreens=document.querySelectorAll('.proj-screen');
 const navItems=document.querySelectorAll('.proj-nav-item');
 const projObs=new IntersectionObserver(entries=>{
@@ -387,4 +400,147 @@ function scrollToProj(id){document.getElementById(id).scrollIntoView({behavior:'
       document.body.style.overflow='';
     }
   });
+})();
+
+/* Project heading + line scroll animation */
+(function(){
+  var headers = document.querySelectorAll('.sp-proj-header');
+  if(!headers.length) return;
+
+  var obs = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if(!e.isIntersecting) return;
+      e.target.classList.add('sp-anim');
+      obs.unobserve(e.target);
+    });
+  }, { threshold: 0.2 });
+
+  headers.forEach(function(h){ obs.observe(h); });
+})();
+
+/* ── Full-screen sections: slow separate image + text animations — REPLAYS on revisit ── */
+(function(){
+
+  function makeFsSection(secId, imgId, txtId, threshold){
+    var sec = document.getElementById(secId);
+    var img = document.getElementById(imgId);
+    var txt = document.getElementById(txtId);
+    if(!sec||!img||!txt) return;
+
+    var t1, t2;
+
+    function reset(){
+      clearTimeout(t1); clearTimeout(t2);
+      img.style.transition = 'none';
+      txt.style.transition = 'none';
+      img.style.opacity    = '0';
+      img.style.transform  = 'scale(1.08)';
+      txt.style.opacity    = '0';
+      txt.style.transform  = 'translateY(30px)';
+    }
+
+    function reveal(){
+      t1 = setTimeout(function(){
+        img.style.transition = 'opacity 1.25s ease, transform 3s cubic-bezier(.16,1,.3,1)';
+        img.style.opacity    = '1';
+        img.style.transform  = 'scale(1.0)';
+      }, 200);
+      t2 = setTimeout(function(){
+        txt.style.transition = 'opacity 1s ease-out, transform 1.1s cubic-bezier(.16,1,.3,1)';
+        txt.style.opacity    = '1';
+        txt.style.transform  = 'translateY(0)';
+      }, 600);
+    }
+
+    /* No disconnect — observer stays alive, replays every visit */
+    new IntersectionObserver(function(entries){
+      if(entries[0].isIntersecting){
+        reveal();
+      } else {
+        reset(); /* reset on leave so it replays next time */
+      }
+    },{threshold: threshold || 0.2}).observe(sec);
+  }
+
+  makeFsSection('full-img',   'fi1-img', 'fi1-text', 0.05);
+  makeFsSection('full-img-2', 'fi2-img', 'fi2-text', 0.2);
+  makeFsSection('full-img-3', 'fi3-img', 'fi3-text', 0.2);
+
+})();
+
+/* ── Section in-view toggle — animations replay on every scroll ── */
+(function(){
+  var wrap = document.getElementById('page-wrap');
+  var snaps = document.querySelectorAll('.snap');
+  if(!snaps.length) return;
+
+  var obs = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if(e.isIntersecting){
+        e.target.classList.add('in-view');
+        /* Re-trigger su-word animations */
+        e.target.querySelectorAll('.su-word').forEach(function(w){
+          w.classList.remove('su-run');
+          void w.offsetWidth; /* force reflow */
+          w.classList.add('su-run');
+        });
+      } else {
+        /* Remove in-view when section leaves — resets animations */
+        e.target.classList.remove('in-view');
+        e.target.querySelectorAll('.su-word').forEach(function(w){
+          w.classList.remove('su-run');
+        });
+        e.target.querySelectorAll('.visible,.vis').forEach(function(el){
+          el.classList.remove('visible','vis','is-visible');
+        });
+      }
+    });
+  },{
+    root: wrap || null,
+    threshold: 0.3
+  });
+
+  snaps.forEach(function(s){ obs.observe(s); });
+})();
+
+/* ── Identity / Philosophy / Capabilities image animations ── */
+/* Same speed as "Translating Thought to Form" */
+(function(){
+
+  function animateSection(secId, imgId, hasScale){
+    var sec = document.getElementById(secId);
+    var img = document.getElementById(imgId);
+    if(!sec||!img) return;
+
+    var t1;
+
+    function reset(){
+      clearTimeout(t1);
+      img.style.transition = 'none';
+      img.style.opacity    = '0';
+      if(hasScale) img.style.transform = 'scale(1.08)';
+    }
+
+    function reveal(){
+      t1 = setTimeout(function(){
+        if(hasScale){
+          img.style.transition = 'opacity 1.25s ease, transform 3s cubic-bezier(.16,1,.3,1)';
+          img.style.transform  = 'scale(1.0)';
+        } else {
+          img.style.transition = 'opacity 1.25s ease';
+        }
+        img.style.opacity = '1';
+      }, 200);
+    }
+
+    new IntersectionObserver(function(entries){
+      if(entries[0].isIntersecting){ reveal(); }
+      else { reset(); }
+    },{threshold:0.2}).observe(sec);
+  }
+
+  animateSection('identity',     'id-img',  true);   /* Introduction — scale + fade */
+  animateSection('about',        'ab-img',  false);  /* Philosophy — fade only (natural size) */
+  animateSection('capabilities', 'cap-img', true);   /* Capabilities — scale + fade */
+
 })();
